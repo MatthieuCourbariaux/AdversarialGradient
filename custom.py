@@ -15,17 +15,6 @@ import lasagne
 
 from theano.sandbox.rng_mrg import MRG_RandomStreams as RandomStreams
 
-class ThresholdedRectifyLayer(lasagne.layers.Layer):
-
-  def get_output_for(self, input, deterministic=False,**kwargs):
-    if deterministic:
-      return T.nnet.relu(input)
-    else:
-      # does not seem to work with T.grad...
-      # return input * T.ge(input,0.)
-      return input * (input > 0.5)
-      # return T.maximum(0.,input) - T.clip(input, 0.,1.)
-
 # Given a dataset and a model, this function trains the model on the dataset for several epochs
 # (There is no default trainer function in Lasagne yet)
 def train(train_fn,val_fn,

@@ -6,9 +6,6 @@ import time
 import numpy as np
 np.random.seed(1234)  # for reproducibility
 
-# specifying the gpu to use
-# import theano.sandbox.cuda
-# theano.sandbox.cuda.use('gpu1') 
 import theano
 import theano.tensor as T
 
@@ -22,27 +19,14 @@ from collections import OrderedDict
 
 if __name__ == "__main__":
     
-    # BN parameters
     batch_size = 32
     print("batch_size = "+str(batch_size))
-    
-    # MLP parameters
     num_units = 400
     print("num_units = "+str(num_units))
-    # max_pooling = 4
-    # print("max_pooling = "+str(max_pooling))
-    
-    # Training parameters
     num_epochs = 150
     print("num_epochs = "+str(num_epochs))
-    
-    # activation = lasagne.nonlinearities.sigmoid
-    # print("activation = lasagne.nonlinearities.sigmoid")
     activation = T.nnet.relu
     print("activation = T.nnet.relu")
-    # activation = lasagne.nonlinearities.very_leaky_rectify
-    # print("activation = lasagne.nonlinearities.very_leaky_rectify")
-    # print("activation = custom.ThresholdedRectifyLayer")
     
     # Decaying LR 
     LR_start = 0.0001
@@ -51,7 +35,6 @@ if __name__ == "__main__":
     print("LR_fin = "+str(LR_fin))
     LR_decay = (LR_fin/LR_start)**(1./num_epochs)
     print("LR_decay = "+str(LR_decay))
-    # BTW, LR decay might good for the BN moving average...
     
     save_path = "mnist_parameters.npz"
     print("save_path = "+str(save_path))
@@ -81,13 +64,8 @@ if __name__ == "__main__":
     train_set_t = np.float32(np.eye(10)[train_set_t])    
     valid_set_t = np.float32(np.eye(10)[valid_set_t])
     test_set_t = np.float32(np.eye(10)[test_set_t])
-    
-    # for hinge loss
-    # train_set_t = 2* train_set_t - 1.
-    # valid_set_t = 2* valid_set_t - 1.
-    # test_set_t = 2* test_set_t - 1.
 
-    print('Specifying the computations graph...') 
+    print('Specifying the graph...') 
     
     # Prepare Theano variables for inputs and targets
     X = T.matrix('inputs')
@@ -99,40 +77,21 @@ if __name__ == "__main__":
     
     # hidden layer
     l = lasagne.layers.DenseLayer(l, nonlinearity=lasagne.nonlinearities.identity, num_units=num_units)
-    # l = lasagne.layers.BatchNormLayer(l)
-    # l = lasagne.layers.BatchNormLayer(l, alpha=.033) 
     l = lasagne.layers.NonlinearityLayer(l,nonlinearity=activation)
-    # l = lasagne.layers.DenseLayer(l, nonlinearity=lasagne.nonlinearities.identity, num_units=num_units, b = None)
-    # l = custom.ThresholdedRectifyLayer(l)
-    # l = lasagne.layers.FeaturePoolLayer(l,pool_size=max_pooling, pool_function=T.max)
-    # l0 = l # residual learning stuff
-    
-    # hidden layer
-    # l = lasagne.layers.DenseLayer(l, nonlinearity=lasagne.nonlinearities.identity, num_units=num_units)
-    # l = lasagne.layers.NonlinearityLayer(l,nonlinearity=activation)
-    # l = lasagne.layers.DenseLayer(l, nonlinearity=lasagne.nonlinearities.identity, num_units=num_units)
-    # l = lasagne.layers.NonlinearityLayer(l,nonlinearity=activation)
     
     # hidden layer
     l = lasagne.layers.DenseLayer(l, nonlinearity=lasagne.nonlinearities.identity, num_units=num_units)
-    # l = lasagne.layers.BatchNormLayer(l) 
-    # l = lasagne.layers.ElemwiseSumLayer([l,l0]) # residual learning stuff
-    # l = lasagne.layers.BatchNormLayer(l, alpha=.033) 
     l = lasagne.layers.NonlinearityLayer(l,nonlinearity=activation)
-    # l = lasagne.layers.DenseLayer(l, nonlinearity=lasagne.nonlinearities.identity, num_units=num_units, b = None)
-    # l = custom.ThresholdedRectifyLayer(l)
-    # l = lasagne.layers.FeaturePoolLayer(l,pool_size=max_pooling, pool_function=T.max)
 
     # output layer
     l = lasagne.layers.DenseLayer(l, nonlinearity=lasagne.nonlinearities.identity,num_units=10)
-    # l = lasagne.layers.BatchNormLayer(l, alpha=.033) 
     l = lasagne.layers.NonlinearityLayer(l,nonlinearity=lasagne.nonlinearities.sigmoid)
     
     def loss(t,y):
-      # return T.mean(T.sqr(T.maximum(0.,1.-t*y)))
       return T.mean(T.nnet.binary_crossentropy(y, t))
       # return -T.mean(t*T.log(y)+(1-t)*T.log(1-y))
     
+    # THIS IS THE INTERESTING PART
     # adversarial objective
     # as in http://arxiv.org/pdf/1510.04189.pdf
     train_output = lasagne.layers.get_output(l, inputs = X, deterministic=True)
@@ -150,7 +109,7 @@ if __name__ == "__main__":
     test_loss = loss(target,test_output)
     test_err = T.mean(T.neq(T.argmax(test_output, axis=1), T.argmax(target, axis=1)),dtype=theano.config.floatX)
     
-    print('Compiling theano functions...')
+    print('Compiling the graph...')
     
     # Compile a function performing a training step on a mini-batch (by giving the updates dictionary) 
     # and returning the corresponding training loss:
